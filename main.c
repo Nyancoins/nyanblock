@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
 
 
     // Scan blockchain
-    uint64_t bid = 0;
+    uint64_t bid = -1;
     uint64_t offset = 0;
     unsigned char blockHash[SHA256_DIGEST_LENGTH];
     memset(blockHash, 0, SHA256_DIGEST_LENGTH);
@@ -129,7 +129,6 @@ int main(int argc, char** argv) {
             printf("\n" ANSI_COLOR_ALERT "Magic does not match any known values, cannot continue!" ANSI_COLOR_RESET "\n");
             break;
         }
-
         
 
         if(array_compare_u8(blockHash, bh->prev_block, SHA256_DIGEST_LENGTH) == 0) {
