@@ -3,9 +3,12 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <wordexp.h>
+
 #include <openssl/sha.h>
 
 #include "tools.h"
+#include "ansicolor.h"
 
 static unsigned char NyanCoinMagic[4] = { 0xfc, 0xd9, 0xb7, 0xdd };
 
@@ -78,6 +81,17 @@ void print_sha256sum(const unsigned char* hash) {
 
 int main(int argc, char** argv) {
     FILE *f = fopen("blk0001.dat", "rb");
+    if(!f) {
+        wordexp_t exp_result;
+        wordexp("~/.nyancoin/blk0001.dat", &exp_result, 0);
+        f = fopen(exp_result.we_wordv[0], "rb");
+        if(!f) {
+            printf("Unable to open blk0001.dat or ~/.nyancoin/blk0001.dat!\n");
+            exit(1);
+        }
+    }
+
+
     fseek(f, 0L, SEEK_END);
     size_t fileLen = ftell(f);
     printf("File is %lu bytes long.\n", fileLen);
@@ -119,9 +133,9 @@ int main(int argc, char** argv) {
         
 
         if(array_compare_u8(blockHash, bh->prev_block, SHA256_DIGEST_LENGTH) == 0) {
-            printf("\t[PreviousBlock hash match!]\n");
+            printf("\t" ANSI_COLOR_GREEN "[PreviousBlock hash match!]" ANSI_COLOR_RESET "\n");
         } else {
-            printf("\t[!! PreviousBlock hash mismatch !!]\n");
+            printf("\t" ANSI_COLOR_ALERT "[!! PreviousBlock hash mismatch !!]" ANSI_COLOR_RESET "\n");
             print_block_header(bh);
             exit(1);
         }
