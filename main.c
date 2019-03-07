@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
         printf("\t----\n");
 
         if(array_compare_u8(h->magic, NyanCoinMagic, 4) != 0) {
-            printf("\nMagic does not match any known values, cannot continue!\n");
+            printf("\n" ANSI_COLOR_ALERT "Magic does not match any known values, cannot continue!" ANSI_COLOR_RESET "\n");
             break;
         }
 
