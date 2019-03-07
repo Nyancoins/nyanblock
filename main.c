@@ -7,26 +7,12 @@
 
 #include <openssl/sha.h>
 
+#include "blockchain.h"
 #include "tools.h"
 #include "ansicolor.h"
 
 static unsigned char NyanCoinMagic[4] = { 0xfc, 0xd9, 0xb7, 0xdd };
 
-typedef struct {
-    int32_t version;
-    uint8_t prev_block[32];
-    uint8_t merkle_root[32];
-    uint32_t timestamp;
-    uint32_t bits;
-    uint32_t nonce;
-    //char txn_count; //var_int
-} __attribute__((aligned(1),packed))  t_BlockHeader;
-
-typedef struct {
-    uint8_t magic[4];
-    uint32_t size;
-    //t_BlockHeader *hdr;
-} __attribute__((aligned(1),packed)) t_BlockDataHeader;
 
 void print_block_dataheader(const t_BlockDataHeader* h) {
     printf("\tMagic: 0x");
@@ -68,25 +54,6 @@ void print_block_header(const t_BlockHeader* h) {
     printf("\tNonce: %u\n", h->nonce);
 }
 
-int sha256sum(unsigned char* dest, void *addr, const size_t len) {
-    SHA256_CTX ctx;
-    if (SHA256_Init(&ctx) != 1) return 1;
-    if (SHA256_Update(&ctx, addr, len) != 1) return 1;
-    if (SHA256_Final(dest, &ctx) != 1) return 1;
-    return 0;
-}
-
-void double_sha256(unsigned char* dest, const void* addr, const size_t len) {
-    unsigned char firstHash[SHA256_DIGEST_LENGTH];
-    sha256sum(firstHash, (void*)addr, len);
-    sha256sum(dest, firstHash, SHA256_DIGEST_LENGTH);
-}
-
-void print_sha256sum(const unsigned char* hash) {
-    for(int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
-        printf("%.2x", hash[i]);
-    }
-}
 
 int main(int argc, char** argv) {
     FILE *f = fopen("blk0001.dat", "rb");

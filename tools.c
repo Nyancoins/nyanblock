@@ -17,6 +17,26 @@ int32_t swap_endian(int32_t v) {
     return swapped;
 }
 
+int sha256sum(unsigned char* dest, void *addr, const size_t len) {
+    SHA256_CTX ctx;
+    if (SHA256_Init(&ctx) != 1) return 1;
+    if (SHA256_Update(&ctx, addr, len) != 1) return 1;
+    if (SHA256_Final(dest, &ctx) != 1) return 1;
+    return 0;
+}
+
+void double_sha256(unsigned char* dest, const void* addr, const size_t len) {
+    unsigned char firstHash[SHA256_DIGEST_LENGTH];
+    sha256sum(firstHash, (void*)addr, len);
+    sha256sum(dest, firstHash, SHA256_DIGEST_LENGTH);
+}
+
+void print_sha256sum(const unsigned char* hash) {
+    for(int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+        printf("%.2x", hash[i]);
+    }
+}
+
 const int SECOND = 1;
 const int MINUTE = 60 * SECOND;
 const int HOUR = 60 * MINUTE;
