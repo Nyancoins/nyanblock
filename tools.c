@@ -1,10 +1,9 @@
 #include "tools.h"
 
 int array_compare_u8(const char* a, const char* b, size_t len) {
-    int r = 0;
-
     for(int i = 0; i < len; ++i) {
-        if(a[i] != b[i]) return -1;
+        if(a[i] < b[i]) return -1;
+        if(a[i] > b[i]) return 1;
     }
 
     return 0;

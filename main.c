@@ -34,7 +34,7 @@ void print_block_dataheader(const t_BlockDataHeader* h) {
         printf("%.2x", h->magic[i]);
     }
 
-    if(array_compare_u8(h->magic, NyanCoinMagic, 4) == 0) {
+    if(array_compare_u8((const char*)h->magic, (const char*)NyanCoinMagic, 4) == 0) {
         printf(" - (nyancoin)");
     } else {
         printf(" - (no match?!)\n");
@@ -66,11 +66,12 @@ void print_block_header(const t_BlockHeader* h) {
     printf("\tNonce: %u\n", h->nonce);
 }
 
-unsigned char* sha256sum(unsigned char* dest, void *addr, const size_t len) {
+int sha256sum(unsigned char* dest, void *addr, const size_t len) {
     SHA256_CTX ctx;
-    SHA256_Init(&ctx);
-    SHA256_Update(&ctx, addr, len);
-    SHA256_Final(dest, &ctx);
+    if (SHA256_Init(&ctx) != 1) return 1;
+    if (SHA256_Update(&ctx, addr, len) != 1) return 1;
+    if (SHA256_Final(dest, &ctx) != 1) return 1;
+    return 0;
 }
 
 void double_sha256(unsigned char* dest, const void* addr, const size_t len) {
@@ -131,13 +132,13 @@ int main(int argc, char** argv) {
         print_block_dataheader(h);
         printf("\t----\n");
 
-        if(array_compare_u8(h->magic, NyanCoinMagic, 4) != 0) {
+        if(array_compare_u8((const char*)h->magic, (const char*)NyanCoinMagic, 4) != 0) {
             printf("\n" ANSI_COLOR_ALERT "Magic does not match any known values, cannot continue!" ANSI_COLOR_RESET "\n");
             break;
         }
         
 
-        if(array_compare_u8(blockHash, bh->prev_block, SHA256_DIGEST_LENGTH) == 0) {
+        if(array_compare_u8((const char*)blockHash, (const char*)bh->prev_block, SHA256_DIGEST_LENGTH) == 0) {
             printf("\t" ANSI_COLOR_GREEN "[PreviousBlock hash match!]" ANSI_COLOR_RESET "\n");
         } else {
             printf("\t" ANSI_COLOR_ALERT "[!! PreviousBlock hash mismatch !!]" ANSI_COLOR_RESET "\n");
