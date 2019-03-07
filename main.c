@@ -62,7 +62,9 @@ void print_block_header(const t_BlockHeader* h) {
     timebuf[127] = '\0';
     
     printf("\tTimeStamp: %d (%s)\n", h->timestamp, timebuf);
-    printf("\tBits: 0x%.8x\n", h->bits);
+
+    double diff = GetDifficulty(h->bits);
+    printf("\tBits: 0x%.8x (diff: %.8f)\n", h->bits, diff);
     printf("\tNonce: %u\n", h->nonce);
 }
 

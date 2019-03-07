@@ -129,3 +129,21 @@ int timeago(char *dest, size_t dest_maxlen, time_t unixtime) {
     */
     
 }
+
+double GetDifficulty(const uint32_t bits) {
+    int shift = (bits >> 24) & 0xff;
+    double diff = (double)0x0000ffff / (double)(bits & 0x00ffffff);
+
+    while (shift < 29)
+    {
+        diff *= 256.0;
+        shift++;
+    }
+    while (shift > 29)
+    {
+        diff /= 256.0;
+        shift--;
+    }
+
+    return diff;
+}
