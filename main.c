@@ -51,15 +51,15 @@ void print_hash256(const uint8_t *buf) {
     }
 }
 
-static char timebuf[64];
+static char timebuf[128];
 
 void print_block_header(const t_BlockHeader* h) {
     printf("\tVersion: %d\n", h->version);
     printf("\tPrevBlock: "); print_hash256(h->prev_block); printf("\n");
     printf("\tMerkleRoot: "); print_hash256(h->merkle_root); printf("\n");
     
-    timeago(timebuf, 63, h->timestamp);
-    timebuf[63] = '\0';
+    timeago(timebuf, 127, h->timestamp);
+    timebuf[127] = '\0';
     
     printf("\tTimeStamp: %d (%s)\n", h->timestamp, timebuf);
     printf("\tBits: 0x%.8x\n", h->bits);

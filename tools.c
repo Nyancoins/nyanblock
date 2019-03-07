@@ -31,55 +31,54 @@ int timeago(char *dest, size_t dest_maxlen, time_t unixtime) {
     int pos = 0;
     char *comma = "";
 
-    while(diff > 0) {
-        if(diff > YEAR) {
-            uint32_t years = diff / YEAR;
-            diff -= years * YEAR;
-            pos += snprintf(dest + pos, dest_maxlen, "%u years", years);
-            comma = ", ";
-        }
+    
+    if(diff > YEAR) {
+        uint32_t years = diff / YEAR;
+        diff -= years * YEAR;
+        pos += snprintf(dest + pos, dest_maxlen, "%u years", years);
+        comma = ", ";
+    }
 
-        if(diff > MONTH) {
-            uint32_t months = diff / MONTH;
-            diff -= months * MONTH;
-            pos += snprintf(dest + pos, dest_maxlen, "%s%u months", comma, months);
-            comma = ", ";
-        }
+    if(diff > MONTH) {
+        uint32_t months = diff / MONTH;
+        diff -= months * MONTH;
+        pos += snprintf(dest + pos, dest_maxlen, "%s%u months", comma, months);
+        comma = ", ";
+    }
 
-        if(diff > DAY) {
-            uint32_t days = diff / DAY;
-            diff -= days * DAY;
-            pos += snprintf(dest + pos, dest_maxlen, "%s%u days", comma, days);
-            comma = ", ";
-        }
+    if(diff > DAY) {
+        uint32_t days = diff / DAY;
+        diff -= days * DAY;
+        pos += snprintf(dest + pos, dest_maxlen, "%s%u days", comma, days);
+        comma = ", ";
+    }
 
-        if(diff > HOUR) {
-            uint32_t hours = diff / HOUR;
-            diff -= hours * MONTH;
-            pos += snprintf(dest + pos, dest_maxlen, "%s%u hours", comma, hours);
-            comma = ", ";
-        }
+    if(diff > HOUR) {
+        uint32_t hours = diff / HOUR;
+        diff -= hours * HOUR;
+        pos += snprintf(dest + pos, dest_maxlen, "%s%u hours", comma, hours);
+        comma = ", ";
+    }
 
-        if(diff > MINUTE) {
-            uint32_t minutes = diff / MINUTE;
-            diff -= minutes * MINUTE;
-            pos += snprintf(dest + pos, dest_maxlen, "%s%u minutes", comma, minutes);
-            comma = ", ";
-        }
+    if(diff > MINUTE) {
+        uint32_t minutes = diff / MINUTE;
+        diff -= minutes * MINUTE;
+        pos += snprintf(dest + pos, dest_maxlen, "%s%u minutes", comma, minutes);
+        comma = ", ";
+    }
 
-        if(diff > SECOND) {
-            uint32_t seconds = diff / SECOND;
-            diff -= seconds * SECOND;
-            pos += snprintf(dest + pos, dest_maxlen, "%s%u seconds", comma, seconds);
-            comma = ", ";
-        }
+    if(diff > SECOND) {
+        uint32_t seconds = diff / SECOND;
+        diff -= seconds * SECOND;
+        pos += snprintf(dest + pos, dest_maxlen, "%s%u seconds", comma, seconds);
+        comma = ", ";
+    }
 
-        if(diff == SECOND) {
-            uint32_t seconds = diff / SECOND;
-            diff -= seconds * SECOND;
-            pos += snprintf(dest + pos, dest_maxlen, "%s%u second", comma, seconds);
-            comma = ", ";
-        }
+    if(diff == SECOND) {
+        uint32_t seconds = diff / SECOND;
+        diff -= seconds * SECOND;
+        pos += snprintf(dest + pos, dest_maxlen, "%s%u second", comma, seconds);
+        comma = ", ";
     }
 
     pos += snprintf(dest + pos, dest_maxlen, " ago");
