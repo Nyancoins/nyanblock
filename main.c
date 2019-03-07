@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
         wordexp("~/.nyancoin/blk0001.dat", &exp_result, 0);
         f = fopen(exp_result.we_wordv[0], "rb");
         if(!f) {
-            printf("Unable to open blk0001.dat or ~/.nyancoin/blk0001.dat!\n");
+            printf("Cannot open ./blk0001.dat or ~/.nyancoin/blk0001.dat!\n");
             exit(1);
         }
     }
@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
         bh = (t_BlockHeader*)((void*)h + 8);
         ++bid;
 
-        printf("Block #%lu\n", bid);
+        printf("\nBlock #%lu\n", bid);
         print_block_dataheader(h);
         printf("\t----\n");
 
