@@ -1,10 +1,11 @@
+CC:=clang
 CFLAGS:=-Wall -pipe -Og -ggdb3
 LIBS:=-lssl -lcrypto
 
 SOURCES:= main.c tools.c
 
 nyanblock: $(SOURCES)
-	gcc $(CFLAGS) $? -o $@ $(LIBS)
+	$(CC) $(CFLAGS) $? -o $@ $(LIBS)
 
 clean:
 	rm main -fv

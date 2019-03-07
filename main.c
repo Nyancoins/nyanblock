@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
         } else {
             printf("\t" ANSI_COLOR_ALERT "[!! PreviousBlock hash mismatch !!]" ANSI_COLOR_RESET "\n");
             print_block_header(bh);
-            exit(1);
+            break;
         }
 
         double_sha256(blockHash, (void*)bh, sizeof(t_BlockHeader));
@@ -156,6 +156,9 @@ int main(int argc, char** argv) {
         // end of loop
         offset += h->size + 8;
     }
+
+    munmap(mappedFile, fileLen);
+    fclose(f);
 
     //getchar();
 }
