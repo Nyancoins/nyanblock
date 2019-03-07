@@ -35,7 +35,7 @@ void print_block_dataheader(const t_BlockDataHeader* h) {
     }
 
     if(array_compare_u8(h->magic, NyanCoinMagic, 4) == 0) {
-        printf(" - MATCH (nyancoin)");
+        printf(" - (nyancoin)");
     } else {
         printf(" - (no match?!)\n");
         return;
@@ -51,11 +51,17 @@ void print_hash256(const uint8_t *buf) {
     }
 }
 
+static char timebuf[64];
+
 void print_block_header(const t_BlockHeader* h) {
     printf("\tVersion: %d\n", h->version);
     printf("\tPrevBlock: "); print_hash256(h->prev_block); printf("\n");
     printf("\tMerkleRoot: "); print_hash256(h->merkle_root); printf("\n");
-    printf("\tTimeStamp: %d\n", h->timestamp);
+    
+    timeago(timebuf, 63, h->timestamp);
+    timebuf[63] = '\0';
+    
+    printf("\tTimeStamp: %d (%s)\n", h->timestamp, timebuf);
     printf("\tBits: 0x%.8x\n", h->bits);
     printf("\tNonce: %u\n", h->nonce);
 }
