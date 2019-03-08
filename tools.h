@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <math.h>
+#include <string.h>
 #include <openssl/sha.h>
 
 #include "blockchain.h"
@@ -17,5 +18,6 @@ void double_sha256(unsigned char* dest, const void* addr, const size_t len);
 void print_sha256sum(const unsigned char* hash);
 int timeago(char *dest, size_t dest_maxlen, time_t unixtime);
 double GetDifficulty(const uint32_t bits);
+int snprint_sha256sum(char dest[65], const unsigned char* hash);
 
 #endif

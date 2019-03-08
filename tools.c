@@ -167,3 +167,13 @@ double GetDifficulty(const uint32_t bits) {
 
     return diff;
 }
+
+int snprint_sha256sum(char dest[65], const unsigned char* hash) {
+    memset(dest, 0, 65);
+
+    for(int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+        snprintf(dest + (i*2), 65, "%.2x", hash[i]);
+    }
+    dest[65] = '\0';
+    return 0;
+}
