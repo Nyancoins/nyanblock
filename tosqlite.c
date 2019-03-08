@@ -6,7 +6,6 @@
 #include <wordexp.h>
 #include <signal.h>
 
-#include <openssl/sha.h>
 #include <sqlite3.h>
 
 #include "blockchain.h"
