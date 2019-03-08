@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     //char buf[1024];
     //int read = fread(buf, 1, 100, f);
 
-    void* mappedFile = mmap(NULL, fileLen, PROT_READ, MAP_PRIVATE|MAP_NORESERVE|MAP_NONBLOCK, fileno(f), 0);
+    void* mappedFile = mmap(NULL, fileLen, PROT_READ, MAP_PRIVATE, fileno(f), 0);
     if(mappedFile == MAP_FAILED) {
         printf("\nFailed to mmap!\n");
         exit(1);
@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
     unsigned char blockHash[SHA256_DIGEST_LENGTH];
     char blockHashStr[65], parentHashStr[65], merkleHashStr[65];
     blockHashStr[64] = '\0'; parentHashStr[64] = '\0'; merkleHashStr[64] = '\0'; 
-    char temp[64];
+    unsigned char temp[64];
     memset(blockHash, 0, SHA256_DIGEST_LENGTH);
     while(offset < fileLen && keepgoing == 1) {
         h = (t_BlockDataHeader*)(mappedFile + offset);

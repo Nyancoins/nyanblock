@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     //char buf[1024];
     //int read = fread(buf, 1, 100, f);
 
-    void* mappedFile = mmap(NULL, fileLen, PROT_READ, MAP_PRIVATE|MAP_NORESERVE|MAP_NONBLOCK, fileno(f), 0);
+    void* mappedFile = mmap(NULL, fileLen, PROT_READ, MAP_PRIVATE, fileno(f), 0);
     if(mappedFile == MAP_FAILED) {
         printf("\nFailed to mmap!\n");
         exit(1);

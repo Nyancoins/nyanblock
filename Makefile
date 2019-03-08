@@ -1,5 +1,5 @@
 CC:=clang
-CFLAGS:=-Wall -pipe -O3 -ggdb3
+CFLAGS:=-Wall -pipe -O3 -ggdb3 -std=c11 -D_POSIX_C_SOURCE 
 LIBS:=-lssl -lcrypto
 
 SOURCES:= main.c tools.c
@@ -11,9 +11,12 @@ tosqlite:
 	$(CC) $(CFLAGS) tosqlite.c tools.c -o $@ $(LIBS) -lsqlite3
 
 clean:
-	rm main -fv
+	rm nyanblock tosqlite -fv
+
+all: nyanblock tosqlite
 
 debug: nyanblock
 	gdb $?
 
 .PHONY: nyanblock
+
