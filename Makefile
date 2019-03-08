@@ -1,5 +1,5 @@
 CC:=clang
-CFLAGS:=-Wall -pipe -O3 -ggdb3 -std=c11 -D_POSIX_C_SOURCE 
+CFLAGS:=-Wall -pipe -O3 -march=native -ggdb3 -std=c11 -D_POSIX_C_SOURCE
 LIBS:=-lssl -lcrypto
 
 SOURCES:= main.c tools.c
