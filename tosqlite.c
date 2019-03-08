@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <wordexp.h>
+#include <signal.h>
 
 #include <openssl/sha.h>
 #include <sqlite3.h>
@@ -55,6 +56,13 @@ void print_block_header(const t_BlockHeader* h) {
     printf("\tNonce: %u\n", h->nonce);
 }
 
+static volatile int keepgoing = 1;
+
+void sigint_handler(int sig) {
+    keepgoing = 0;
+    fprintf(stderr, "SIGINT captured!\n");
+}
+
 
 int main(int argc, char** argv) {
     FILE *f = fopen("blk0001.dat", "rb");
@@ -68,11 +76,12 @@ int main(int argc, char** argv) {
         }
     }
 
-
     fseek(f, 0L, SEEK_END);
     size_t fileLen = ftell(f);
     printf("File is %lu bytes long.\n", fileLen);
     rewind(f);
+
+    signal(SIGINT, sigint_handler);
 
     //char buf[1024];
     //int read = fread(buf, 1, 100, f);
@@ -86,7 +95,7 @@ int main(int argc, char** argv) {
     char *sqlerr;
     int ok = 666;
     sqlite3 *db;
-    if(sqlite3_open("nyanblock.db", &db) != SQLITE_OK) {
+    if(sqlite3_open_v2("nyanblock.db", &db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL) != SQLITE_OK) {
         fprintf(stderr, "Unable to open nyanblock.db for writing!\n");
         exit(1);
     }
@@ -101,8 +110,11 @@ int main(int argc, char** argv) {
 	"`bits`	INTEGER NOT NULL,"
 	"`nonce`	INTEGER NOT NULL"
 ");"
-"CREATE INDEX IF NOT EXISTS `block_hash_index` ON `blocks` ("
-"   `parent_hash`"
+"CREATE INDEX IF NOT EXISTS `idx_block_hash` ON `blocks` ("
+"   `block_hash`"
+");"
+"CREATE INDEX IF NOT EXISTS `idx_parent_hash` ON `blocks` ("
+"	`parent_hash`"
 ");", NULL, NULL, &sqlerr) != SQLITE_OK) {
     printf("Could not initialize sqlite database!\nReason: %s\n", sqlerr);
     exit(1);
@@ -129,8 +141,10 @@ int main(int argc, char** argv) {
     uint64_t offset = 0;
     unsigned char blockHash[SHA256_DIGEST_LENGTH];
     char blockHashStr[65], parentHashStr[65], merkleHashStr[65];
+    blockHashStr[64] = '\0'; parentHashStr[64] = '\0'; merkleHashStr[64] = '\0'; 
+    char temp[64];
     memset(blockHash, 0, SHA256_DIGEST_LENGTH);
-    while(offset < fileLen) {
+    while(offset < fileLen && keepgoing == 1) {
         h = (t_BlockDataHeader*)(mappedFile + offset);
         bh = (t_BlockHeader*)((void*)h + 8);
         ++bid;
@@ -145,9 +159,18 @@ int main(int argc, char** argv) {
         }
 
         double_sha256(blockHash, (void*)bh, sizeof(t_BlockHeader));
-        snprint_sha256sum(blockHashStr, blockHash);
-        snprint_sha256sum(parentHashStr, bh->prev_block);
-        snprint_sha256sum(merkleHashStr, bh->merkle_root);
+        
+        memcpy(temp, blockHash, 32);
+        byte_swap(temp, 32);
+        snprint_sha256sum(blockHashStr, temp);
+        
+        memcpy(temp, bh->prev_block, 32);
+        byte_swap(temp, 32);
+        snprint_sha256sum(parentHashStr, temp);
+
+        memcpy(temp, bh->merkle_root, 32);
+        byte_swap(temp, 32);
+        snprint_sha256sum(merkleHashStr, temp);
 
         ok = sqlite3_bind_int(block_insert_stmt, 1, bid);
         if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }

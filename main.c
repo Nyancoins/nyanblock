@@ -5,8 +5,6 @@
 #include <sys/mman.h>
 #include <wordexp.h>
 
-#include <openssl/sha.h>
-
 #include "blockchain.h"
 #include "tools.h"
 #include "ansicolor.h"

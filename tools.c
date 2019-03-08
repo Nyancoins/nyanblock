@@ -177,3 +177,21 @@ int snprint_sha256sum(char dest[65], const unsigned char* hash) {
     dest[65] = '\0';
     return 0;
 }
+
+void byte_swap(unsigned char* data, int len) {
+        int c = 0;
+        unsigned char tmp[len];
+
+        while(c<len)
+        {
+                tmp[c] = data[len-(c+1)];
+                c++;
+        }
+       
+        c=0;
+        while(c<len)
+        {
+                data[c] = tmp[c];
+                c++;
+        }
+}
