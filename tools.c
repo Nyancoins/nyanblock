@@ -187,11 +187,6 @@ void byte_swap(unsigned char* data, int len) {
                 tmp[c] = data[len-(c+1)];
                 c++;
         }
-       
-        c=0;
-        while(c<len)
-        {
-                data[c] = tmp[c];
-                c++;
-        }
+
+        memcpy(data, tmp, len);
 }
