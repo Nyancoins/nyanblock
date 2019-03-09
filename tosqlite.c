@@ -101,6 +101,7 @@ int main(int argc, char** argv) {
 
     if(sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS `blocks` ("
 	"`id`	INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "`size` INTEGER NOT NULL,"
 	"`version`	INTEGER NOT NULL,"
 	"`parent_hash`	TEXT NOT NULL,"
     "`block_hash`   TEXT NOT NULL,"
@@ -121,8 +122,8 @@ int main(int argc, char** argv) {
 
     sqlite3_stmt *block_insert_stmt;
     ok = sqlite3_prepare(db,
-        "INSERT INTO blocks (id, version, block_hash, parent_hash, merkle_hash, timestamp, bits, nonce) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO blocks (id, version, block_hash, parent_hash, merkle_hash, timestamp, bits, nonce, size) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     -1, &block_insert_stmt, NULL);
     if(ok != SQLITE_OK) {
         printf("Unable to prepare statement! (%d)\nBecause: %s\n", ok, sqlite3_errmsg(db));
@@ -186,6 +187,8 @@ int main(int argc, char** argv) {
         ok = sqlite3_bind_int64(block_insert_stmt, 7, bh->bits);
         if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
         ok = sqlite3_bind_int64(block_insert_stmt, 8, bh->nonce);
+        if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
+        ok = sqlite3_bind_int64(block_insert_stmt, 9, h->size);
         if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
 
         ok = sqlite3_step(block_insert_stmt);
