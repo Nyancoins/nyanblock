@@ -1,6 +1,7 @@
 #ifndef __H_BLOCKHAIN_
 #define __H_BLOCKHAIN_
 #include <stdint.h>
+#include <string.h>
 
 typedef struct {
     int32_t version;
@@ -17,6 +18,8 @@ typedef struct {
     uint32_t size;
     //t_BlockHeader *hdr;
 } __attribute__((aligned(1),packed)) t_BlockDataHeader;
+
+uint64_t parse_varint(const uint8_t* varint);
 
 
 #endif

@@ -90,6 +90,9 @@ int main(int argc, char** argv) {
     uint64_t offset = 0;
     unsigned char blockHash[SHA256_DIGEST_LENGTH];
     memset(blockHash, 0, SHA256_DIGEST_LENGTH);
+    char blockHashStr[65], parentHashStr[65], merkleHashStr[65];
+    blockHashStr[64] = '\0'; parentHashStr[64] = '\0'; merkleHashStr[64] = '\0'; 
+    unsigned char temp[64];
     while(offset < fileLen) {
         h = (t_BlockDataHeader*)(mappedFile + offset);
         bh = (t_BlockHeader*)((void*)h + 8);
@@ -114,9 +117,24 @@ int main(int argc, char** argv) {
         }
 
         double_sha256(blockHash, (void*)bh, sizeof(t_BlockHeader));
-        printf("\tBlockHeader hash: "); print_sha256sum(blockHash); printf("\n");
+        memcpy(temp, blockHash, 32);
+        byte_swap(temp, 32);
+        snprint_sha256sum(blockHashStr, temp);
+        
+        memcpy(temp, bh->prev_block, 32);
+        byte_swap(temp, 32);
+        snprint_sha256sum(parentHashStr, temp);
+
+        printf("\tBlockHeader hash: %s\n", blockHashStr);
 
         print_block_header(bh);
+
+
+        // varint + tx
+        const uint8_t* varint_base = (uint8_t*) bh + sizeof(t_BlockHeader);
+        uint64_t val = parse_varint(varint_base);
+        printf("\t---\n\tVarInt: %lu transaction%s\n", val, val > 1 ? "s" : "");
+
 
         // end of loop
         offset += h->size + 8;
