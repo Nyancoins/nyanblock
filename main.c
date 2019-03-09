@@ -132,9 +132,65 @@ int main(int argc, char** argv) {
 
         // varint + tx
         const uint8_t* varint_base = (uint8_t*) bh + sizeof(t_BlockHeader);
-        uint64_t val = parse_varint(varint_base);
+        uint8_t *pos = (uint8_t*)varint_base;
+        uint64_t val = 0;
+        size_t varint_len = parse_varint(&val, varint_base);
+        pos += varint_len;
         printf("\t---\n\tVarInt: %lu transaction%s\n", val, val > 1 ? "s" : "");
 
+        for(uint64_t txid = 0; txid < val; ++txid) {
+            printf("\tTx: %lu ->\n", txid);
+
+            transaction_t *tx;
+            size_t txbytes = parse_transaction(&tx, pos);
+            pos += txbytes;
+
+            printf(
+                "\t\tVersion: %d\n"
+                "\t\tNumInputs: %lu\n"
+            ,tx->version, tx->num_inputs);
+
+            for(uint64_t ii = 0; ii < tx->num_inputs; ++ii) {
+                const input_t *input = tx->inputs[ii];
+                char txhash[65];
+                snprint_sha256sum(txhash, input->txid);
+                printf(
+                    "\t\tInput #%lu ->\n"
+                    "\t\t\tTxID: %s\n"
+                    "\t\t\tTxOut: %d\n"
+                    "\t\t\tScriptLen: %lu\n",
+                    ii, txhash, input->txout, input->scriptlen
+                );
+
+                printf("\t\t\tScript: " ANSI_COLOR_BLUE);
+                for(uint64_t si = 0; si < input->scriptlen; ++si) {
+                    printf(ANSI_COLOR_BLUE "%c", input->script[si] > 31 && input->script[si] < 127 ? input->script[si] : '?');
+                }
+                printf(ANSI_COLOR_RESET "\n");
+
+                printf("\t\t\tSequence: %d\n\t\t\t---\n", input->sequence);
+            }
+            printf("\n");
+
+            for(uint64_t ii = 0; ii < tx->num_outputs; ++ii) {
+                const output_t *output = tx->outputs[ii];
+
+                printf(
+                    "\t\tOutput #%lu ->\n"
+                    "\t\t\tValue: %lu\n"
+                    "\t\t\tPubKeyLen: %lu\n"
+                    "\t\t\tPubKey: ",
+                    ii, output->value, output->pubkeylen
+                );
+
+                for(uint64_t ci = 0; ci < output->pubkeylen; ++ci) {
+                    printf("%.2x", output->pubkey[ci]);
+                }
+                printf("\n");
+            }
+
+            free_transaction(tx);
+        }
 
         // end of loop
         offset += h->size + 8;
