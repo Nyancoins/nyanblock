@@ -2,8 +2,7 @@
 #include "tools.h"
 
 size_t parse_varint(uint64_t *out, const uint8_t* varint) {
-    uint8_t first;
-    memcpy(&first, varint, sizeof(uint8_t));
+    uint8_t first = *varint;
 
     if(first <= 0xfc) {
         *out = first;
@@ -11,21 +10,18 @@ size_t parse_varint(uint64_t *out, const uint8_t* varint) {
     }
 
     if(first == 0xfd) {
-        uint16_t val;
-        memcpy(&val, varint, sizeof(uint16_t));
-        return sizeof(uint16_t);
+        memcpy(out, varint+1, sizeof(uint16_t));
+        return sizeof(uint16_t)+1;
     }
 
     if(first == 0xfe) {
-        uint32_t val;
-        memcpy(&val, varint, sizeof(uint32_t));
-        return sizeof(uint32_t);
+        memcpy(out, varint+1, sizeof(uint32_t));
+        return sizeof(uint32_t)+1;
     }
 
     if(first == 0xff) {
-        uint64_t val;
-        memcpy(&val, varint, sizeof(uint64_t));
-        return sizeof(uint64_t);
+        memcpy(out, varint+1, sizeof(uint64_t));
+        return sizeof(uint64_t)+1;
     }
 
     return 0;
