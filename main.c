@@ -194,6 +194,12 @@ int main(int argc, char** argv) {
 
         // end of loop
         offset += h->size + 8;
+
+        if((uint64_t)pos != (uint64_t)mappedFile + (uint64_t)offset) {
+            printf(ANSI_COLOR_RED "Error! Something doesn't add up!\n" ANSI_COLOR_RESET);
+            printf("%.16lx pos\n%.16lx offset\n", (uint64_t)pos, (uint64_t)(mappedFile + offset));
+            exit(1);
+        }
     }
 
     munmap(mappedFile, fileLen);

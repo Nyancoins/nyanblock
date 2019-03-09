@@ -95,9 +95,11 @@ size_t parse_transaction(transaction_t **data, const uint8_t* src) {
 
 void free_transaction(transaction_t *tx) {
     for(uint64_t i = 0; i < tx->num_inputs; ++i) {
+        free(tx->inputs[i]->script);
         free(tx->inputs[i]);
     }
     for(uint64_t i = 0; i < tx->num_outputs; ++i) {
+        free(tx->outputs[i]->pubkey);
         free(tx->outputs[i]);
     }
     free(tx->inputs);
