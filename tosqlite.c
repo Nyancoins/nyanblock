@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include <wordexp.h>
 #include <signal.h>
+#include <unistd.h> // for isatty
 
 #include <sqlite3.h>
 
@@ -63,12 +64,38 @@ void sigint_handler(int sig) {
 }
 
 
+char *sqlerr;
+int ok = 666;
+sqlite3 *db;
+
+void sqlite_errcheck(int result, int fatal, const char *file, const int line) {
+    if(result != SQLITE_OK && result != SQLITE_ROW && result != SQLITE_DONE) {
+        char* ccstart = "";
+        char* ccend = "";
+
+        if(isatty(fileno(stderr))) {
+            ccstart = ANSI_COLOR_RED;
+            ccend = ANSI_COLOR_RESET;
+        }
+
+        fprintf(stderr, "%s%s:%d - SQLite error %d: %s%s\n", ccstart, file, line, result, sqlite3_errmsg(db), ccend);
+        if(fatal != 0) {
+            keepgoing = 0;
+            fprintf(stderr, "%sCannot continue.%s\n", ccstart, ccend);
+        }
+    }
+}
+
+#define SQLITE_CHECK_FATAL(r) \
+    sqlite_errcheck(r, 1, __FILE__, __LINE__);
+
 int main(int argc, char** argv) {
     FILE *f = fopen("blk0001.dat", "rb");
     if(!f) {
         wordexp_t exp_result;
         wordexp("~/.nyancoin/blk0001.dat", &exp_result, 0);
         f = fopen(exp_result.we_wordv[0], "rb");
+        wordfree(&exp_result);
         if(!f) {
             printf("Cannot open ./blk0001.dat or ~/.nyancoin/blk0001.dat!\n");
             exit(1);
@@ -87,19 +114,15 @@ int main(int argc, char** argv) {
 
     void* mappedFile = mmap(NULL, fileLen, PROT_READ, MAP_PRIVATE, fileno(f), 0);
     if(mappedFile == MAP_FAILED) {
-        printf("\nFailed to mmap!\n");
+        fprintf(stderr, ANSI_COLOR_RED "\nFailed to mmap!\n" ANSI_COLOR_RESET);
         exit(1);
     }
 
-    char *sqlerr;
-    int ok = 666;
-    sqlite3 *db;
-    if(sqlite3_open_v2("nyanblock.db", &db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL) != SQLITE_OK) {
-        fprintf(stderr, "Unable to open nyanblock.db for writing!\n");
-        exit(1);
-    }
+    ok = sqlite3_open_v2("nyanblock.db", &db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL);
+    SQLITE_CHECK_FATAL(ok);
+    if(ok != SQLITE_OK) exit(1);
 
-    if(sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS `blocks` ("
+    ok = sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS `blocks` ("
 	"`id`	INTEGER PRIMARY KEY AUTOINCREMENT,"
     "`size` INTEGER NOT NULL,"
 	"`version`	INTEGER NOT NULL,"
@@ -115,21 +138,18 @@ int main(int argc, char** argv) {
 ");"
 "CREATE INDEX IF NOT EXISTS `idx_parent_hash` ON `blocks` ("
 "	`parent_hash`"
-");", NULL, NULL, &sqlerr) != SQLITE_OK) {
-    printf("Could not initialize sqlite database!\nReason: %s\n", sqlerr);
-    exit(1);
-}
+");", NULL, NULL, &sqlerr);
+    SQLITE_CHECK_FATAL(ok);
+    if(ok != SQLITE_OK) exit(1);
 
     sqlite3_stmt *block_insert_stmt;
     ok = sqlite3_prepare(db,
         "INSERT INTO blocks (id, version, block_hash, parent_hash, merkle_hash, timestamp, bits, nonce, size) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     -1, &block_insert_stmt, NULL);
-    if(ok != SQLITE_OK) {
-        printf("Unable to prepare statement! (%d)\nBecause: %s\n", ok, sqlite3_errmsg(db));
-        exit(1);
-    }
-    sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+    SQLITE_CHECK_FATAL(ok);
+    ok = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+    SQLITE_CHECK_FATAL(ok);
     
 
     t_BlockDataHeader *h = (t_BlockDataHeader*)mappedFile;
@@ -154,7 +174,7 @@ int main(int argc, char** argv) {
         }
 
         if(array_compare_u8((const char*)h->magic, (const char*)NyanCoinMagic, 4) != 0) {
-            printf("\n" ANSI_COLOR_ALERT "Magic does not match any known values, cannot continue!" ANSI_COLOR_RESET "\n");
+            fprintf(stderr, "\n" ANSI_COLOR_ALERT "Magic does not match any known values, cannot continue!" ANSI_COLOR_RESET "\n");
             break;
         }
 
@@ -172,52 +192,26 @@ int main(int argc, char** argv) {
         byte_swap(temp, 32);
         snprint_sha256sum(merkleHashStr, temp);
 
-        ok = sqlite3_bind_int(block_insert_stmt, 1, bid);
-        if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
-        ok = sqlite3_bind_int(block_insert_stmt, 2, bh->version);
-        if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
-        ok = sqlite3_bind_text(block_insert_stmt, 3, blockHashStr, -1, NULL);
-        if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
-        ok = sqlite3_bind_text(block_insert_stmt, 4, parentHashStr, -1, NULL);
-        if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
-        ok = sqlite3_bind_text(block_insert_stmt, 5, merkleHashStr, -1, NULL);
-        if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
-        ok = sqlite3_bind_int64(block_insert_stmt, 6, bh->timestamp);
-        if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
-        ok = sqlite3_bind_int64(block_insert_stmt, 7, bh->bits);
-        if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
-        ok = sqlite3_bind_int64(block_insert_stmt, 8, bh->nonce);
-        if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
-        ok = sqlite3_bind_int64(block_insert_stmt, 9, h->size);
-        if(ok != SQLITE_OK) { fprintf(stderr, "Unable to bind value to prepared statement. :( (%d)\n", ok); break; }
+        ok = sqlite3_bind_int(block_insert_stmt, 1, bid); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_int(block_insert_stmt, 2, bh->version); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_text(block_insert_stmt, 3, blockHashStr, -1, NULL); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_text(block_insert_stmt, 4, parentHashStr, -1, NULL); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_text(block_insert_stmt, 5, merkleHashStr, -1, NULL); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_int64(block_insert_stmt, 6, bh->timestamp); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_int64(block_insert_stmt, 7, bh->bits); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_int64(block_insert_stmt, 8, bh->nonce); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_int64(block_insert_stmt, 9, h->size); SQLITE_CHECK_FATAL(ok);
 
-        ok = sqlite3_step(block_insert_stmt);
-        if(ok != SQLITE_OK && ok != SQLITE_DONE) { fprintf(stderr, "Unable to execute prepared statement. :( (%d)\nBecause: %s\n", ok, sqlite3_errmsg(db)); break; }
-
-        sqlite3_reset(block_insert_stmt);
-
-        /*printf("\nBlock #%lu\n", bid);
-        print_block_dataheader(h);
-        printf("\t----\n");
-
-        if(array_compare_u8((const char*)blockHash, (const char*)bh->prev_block, SHA256_DIGEST_LENGTH) == 0) {
-            printf("\t" ANSI_COLOR_GREEN "[PreviousBlock hash match!]" ANSI_COLOR_RESET "\n");
-        } else {
-            printf("\t" ANSI_COLOR_ALERT "[!! PreviousBlock hash mismatch !!]" ANSI_COLOR_RESET "\n");
-            print_block_header(bh);
-        }
-
-        double_sha256(blockHash, (void*)bh, sizeof(t_BlockHeader));
-        printf("\tBlockHeader hash: "); print_sha256sum(blockHash); printf("\n");
-
-        print_block_header(bh);*/
+        ok = sqlite3_step(block_insert_stmt); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_reset(block_insert_stmt); SQLITE_CHECK_FATAL(ok);
 
         // end of loop
         offset += h->size + 8;
     }
-    sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
+    ok = sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
 
-    sqlite3_close(db);
+    ok = sqlite3_finalize(block_insert_stmt); SQLITE_CHECK_FATAL(ok);
+    ok = sqlite3_close(db); SQLITE_CHECK_FATAL(ok);
     munmap(mappedFile, fileLen);
     fclose(f);
 
