@@ -59,6 +59,7 @@ int main(int argc, char** argv) {
         wordexp_t exp_result;
         wordexp("~/.nyancoin/blk0001.dat", &exp_result, 0);
         f = fopen(exp_result.we_wordv[0], "rb");
+        wordfree(&exp_result);
         if(!f) {
             printf("Cannot open ./blk0001.dat or ~/.nyancoin/blk0001.dat!\n");
             exit(1);
@@ -70,9 +71,6 @@ int main(int argc, char** argv) {
     size_t fileLen = ftell(f);
     printf("File is %lu bytes long.\n", fileLen);
     rewind(f);
-
-    //char buf[1024];
-    //int read = fread(buf, 1, 100, f);
 
     void* mappedFile = mmap(NULL, fileLen, PROT_READ, MAP_PRIVATE, fileno(f), 0);
     if(mappedFile == MAP_FAILED) {
@@ -195,8 +193,9 @@ int main(int argc, char** argv) {
         // end of loop
         offset += h->size + 8;
 
+        // Sanity check
         if((uint64_t)pos != (uint64_t)mappedFile + (uint64_t)offset) {
-            printf(ANSI_COLOR_RED "\nError! Something doesn't add up!\n" ANSI_COLOR_RESET);
+            printf("\n" ANSI_COLOR_RED "Error! Something doesn't add up!\n" ANSI_COLOR_RESET);
             printf("%.16lx pos\n%.16lx offset\n", (uint64_t)pos, (uint64_t)(mappedFile + offset));
             exit(1);
         }
