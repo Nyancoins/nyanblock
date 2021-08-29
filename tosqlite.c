@@ -122,25 +122,19 @@ int main(int argc, char** argv) {
     SQLITE_CHECK_FATAL(ok);
     if(ok != SQLITE_OK) exit(1);
 
-    ok = sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS `blocks` ("
-	"`id`	INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "`size` INTEGER NOT NULL,"
-	"`version`	INTEGER NOT NULL,"
-	"`parent_hash`	TEXT NOT NULL,"
-    "`block_hash`   TEXT NOT NULL,"
-	"`merkle_hash`	TEXT NOT NULL,"
-	"`timestamp`	INTEGER NOT NULL,"
-	"`bits`	INTEGER NOT NULL,"
-	"`nonce`	INTEGER NOT NULL"
-");"
-"CREATE INDEX IF NOT EXISTS `idx_block_hash` ON `blocks` ("
-"   `block_hash`"
-");"
-"CREATE INDEX IF NOT EXISTS `idx_parent_hash` ON `blocks` ("
-"	`parent_hash`"
-");", NULL, NULL, &sqlerr);
-    SQLITE_CHECK_FATAL(ok);
-    if(ok != SQLITE_OK) exit(1);
+    {
+        FILE *sql = fopen("nyanblock.sql", "r");
+        if (sql == NULL) {
+            printf("unable to open nyanblock.sql\n");
+            exit(1);
+        }
+        char buf[4096] = {0};
+        fread(buf, 4095, 1, sql);
+        ok = sqlite3_exec(db, buf, NULL, NULL, &sqlerr); SQLITE_CHECK_FATAL(ok);
+        if(ok != SQLITE_OK) exit(1);
+    }
+
+
 
     sqlite3_stmt *block_insert_stmt;
     ok = sqlite3_prepare(db,
@@ -148,7 +142,27 @@ int main(int argc, char** argv) {
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     -1, &block_insert_stmt, NULL);
     SQLITE_CHECK_FATAL(ok);
-    ok = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+
+
+    sqlite3_stmt *transaction_insert_stmt;
+    ok = sqlite3_prepare(db,
+                         "INSERT INTO transactions (block, numtx) "
+                         "VALUES (?, ?)",
+                         -1, &transaction_insert_stmt, NULL);
+    SQLITE_CHECK_FATAL(ok);
+
+    sqlite3_stmt *inputs_insert_stmt;
+    ok = sqlite3_prepare(db,
+                         "INSERT INTO inputs (transaction_id, txhash, txout, script, sequence) "
+                         "VALUES (?, ?, ?, ?, ?)",
+                         -1, &inputs_insert_stmt, NULL);
+    SQLITE_CHECK_FATAL(ok);
+
+    sqlite3_stmt *outputs_insert_stmt;
+    ok = sqlite3_prepare(db,
+                         "INSERT INTO outputs (transaction_id, value, pubkey) "
+                         "VALUES (?, ?, ?)",
+                         -1, &outputs_insert_stmt, NULL);
     SQLITE_CHECK_FATAL(ok);
     
 
@@ -164,13 +178,18 @@ int main(int argc, char** argv) {
     blockHashStr[64] = '\0'; parentHashStr[64] = '\0'; merkleHashStr[64] = '\0'; 
     unsigned char temp[64];
     memset(blockHash, 0, SHA256_DIGEST_LENGTH);
+
+    ok = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
+
     while(offset < fileLen && keepgoing == 1) {
         h = (t_BlockDataHeader*)(mappedFile + offset);
         bh = (t_BlockHeader*)((void*)h + 8);
         ++bid;
 
         if(bid % 10000 == 0) {
-            printf("Block #%lu\n", bid);
+            printf("Block #%llu\n", bid);
+            ok = sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
         }
 
         if(array_compare_u8((const char*)h->magic, (const char*)NyanCoinMagic, 4) != 0) {
@@ -204,6 +223,88 @@ int main(int argc, char** argv) {
 
         ok = sqlite3_step(block_insert_stmt); SQLITE_CHECK_FATAL(ok);
         ok = sqlite3_reset(block_insert_stmt); SQLITE_CHECK_FATAL(ok);
+
+        // varint + tx
+        const uint8_t* varint_base = (uint8_t*) bh + sizeof(t_BlockHeader);
+        uint8_t *pos = (uint8_t*)varint_base;
+        uint64_t numTx = 0;
+        size_t varint_len = parse_varint(&numTx, varint_base);
+        pos += varint_len;
+        //printf("\t---\n\tVarInt: %lu transaction%s\n", numTx, numTx > 1 ? "s" : "");
+
+        ok = sqlite3_bind_int64(transaction_insert_stmt, 1, bid); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_int64(transaction_insert_stmt, 2, numTx); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_step(transaction_insert_stmt); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_reset(transaction_insert_stmt); SQLITE_CHECK_FATAL(ok);
+        uint64_t transaction_id = sqlite3_last_insert_rowid(db);
+
+        for(uint64_t txid = 0; txid < numTx; ++txid) {
+            //printf("\tTx: %lu ->\n", txid);
+
+            transaction_t *tx;
+            size_t txbytes = parse_transaction(&tx, pos);
+            pos += txbytes;
+
+            /*printf(
+                "\t\tVersion: %d\n"
+                "\t\tNumInputs: %lu\n"
+            ,tx->version, tx->num_inputs);*/
+
+            for(uint64_t ii = 0; ii < tx->num_inputs; ++ii) {
+                const input_t *input = tx->inputs[ii];
+                char txhash[65];
+                snprint_sha256sum(txhash, input->txid);
+               /* printf(
+                    "\t\tInput #%lu ->\n"
+                    "\t\t\tTxID: %s\n"
+                    "\t\t\tTxOut: %d\n"
+                    "\t\t\tScriptLen: %lu\n",
+                    ii, txhash, input->txout, input->scriptlen
+                );*/
+
+                /*printf("\t\t\tScript: " ANSI_COLOR_BLUE);
+                for(uint64_t si = 0; si < input->scriptlen; ++si) {
+                    printf(ANSI_COLOR_BLUE "%c", input->script[si] > 31 && input->script[si] < 127 ? input->script[si] : '?');
+                }
+                printf(ANSI_COLOR_RESET "\n");
+
+                printf("\t\t\tSequence: %d\n\t\t\t---\n", input->sequence);*/
+
+                ok = sqlite3_bind_int64(inputs_insert_stmt, 1, transaction_id); SQLITE_CHECK_FATAL(ok);
+                ok = sqlite3_bind_text(inputs_insert_stmt, 2, txhash, 64, SQLITE_STATIC); SQLITE_CHECK_FATAL(ok);
+                ok = sqlite3_bind_int(inputs_insert_stmt, 3, input->txout); SQLITE_CHECK_FATAL(ok);
+                ok = sqlite3_bind_blob(inputs_insert_stmt, 4, input->script, input->scriptlen, SQLITE_STATIC); SQLITE_CHECK_FATAL(ok);
+                ok = sqlite3_bind_int(inputs_insert_stmt, 5, input->sequence); SQLITE_CHECK_FATAL(ok);
+                ok = sqlite3_step(inputs_insert_stmt); SQLITE_CHECK_FATAL(ok);
+                ok = sqlite3_reset(inputs_insert_stmt); SQLITE_CHECK_FATAL(ok);
+            }
+            //printf("\n");
+
+            for(uint64_t ii = 0; ii < tx->num_outputs; ++ii) {
+                const output_t *output = tx->outputs[ii];
+
+                /*printf(
+                    "\t\tOutput #%lu ->\n"
+                    "\t\t\tValue: %lu\n"
+                    "\t\t\tPubKeyLen: %lu\n"
+                    "\t\t\tPubKey: ",
+                    ii, output->value, output->pubkeylen
+                );*/
+
+                /*for(uint64_t ci = 0; ci < output->pubkeylen; ++ci) {
+                    printf("%.2x", output->pubkey[ci]);
+                }
+                printf("\n");*/
+
+                ok = sqlite3_bind_int64(outputs_insert_stmt, 1, transaction_id); SQLITE_CHECK_FATAL(ok);
+                ok = sqlite3_bind_int64(outputs_insert_stmt, 2, (uint64_t)output->value); SQLITE_CHECK_FATAL(ok);
+                ok = sqlite3_bind_blob(outputs_insert_stmt, 3, output->pubkey, output->pubkeylen, SQLITE_STATIC); SQLITE_CHECK_FATAL(ok);
+                ok = sqlite3_step(outputs_insert_stmt); SQLITE_CHECK_FATAL(ok);
+                ok = sqlite3_reset(outputs_insert_stmt); SQLITE_CHECK_FATAL(ok);
+            }
+
+            free_transaction(tx);
+        }
 
         // end of loop
         offset += h->size + 8;

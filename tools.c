@@ -1,4 +1,5 @@
 #include "tools.h"
+int snprintf(char *buf, size_t size, const char *fmt, ...);
 
 int array_compare_u8(const char* a, const char* b, size_t len) {
     for(int i = 0; i < len; ++i) {
@@ -54,49 +55,49 @@ int timeago(char *dest, size_t dest_maxlen, time_t unixtime) {
     if(diff > YEAR) {
         uint64_t years = diff / YEAR;
         diff -= years * YEAR;
-        pos += snprintf(dest + pos, dest_maxlen, "%lu years", years);
+        pos += snprintf(dest + pos, dest_maxlen, "%llu years", years);
         comma = ", ";
     }
 
     if(diff > MONTH) {
         uint64_t months = diff / MONTH;
         diff -= months * MONTH;
-        pos += snprintf(dest + pos, dest_maxlen, "%s%lu months", comma, months);
+        pos += snprintf(dest + pos, dest_maxlen, "%s%llu months", comma, months);
         comma = ", ";
     }
 
     if(diff > DAY) {
         uint64_t days = diff / DAY;
         diff -= days * DAY;
-        pos += snprintf(dest + pos, dest_maxlen, "%s%lu days", comma, days);
+        pos += snprintf(dest + pos, dest_maxlen, "%s%llu days", comma, days);
         comma = ", ";
     }
 
     if(diff > HOUR) {
         uint64_t hours = diff / HOUR;
         diff -= hours * HOUR;
-        pos += snprintf(dest + pos, dest_maxlen, "%s%lu hours", comma, hours);
+        pos += snprintf(dest + pos, dest_maxlen, "%s%llu hours", comma, hours);
         comma = ", ";
     }
 
     if(diff > MINUTE) {
         uint64_t minutes = diff / MINUTE;
         diff -= minutes * MINUTE;
-        pos += snprintf(dest + pos, dest_maxlen, "%s%lu minutes", comma, minutes);
+        pos += snprintf(dest + pos, dest_maxlen, "%s%llu minutes", comma, minutes);
         comma = ", ";
     }
 
     if(diff > SECOND) {
         uint64_t seconds = diff / SECOND;
         diff -= seconds * SECOND;
-        pos += snprintf(dest + pos, dest_maxlen, "%s%lu seconds", comma, seconds);
+        pos += snprintf(dest + pos, dest_maxlen, "%s%llu seconds", comma, seconds);
         comma = ", ";
     }
 
     if(diff == SECOND) {
         uint64_t seconds = diff / SECOND;
         diff -= seconds * SECOND;
-        pos += snprintf(dest + pos, dest_maxlen, "%s%lu second", comma, seconds);
+        pos += snprintf(dest + pos, dest_maxlen, "%s%llu second", comma, seconds);
         comma = ", ";
     }
 
