@@ -11,7 +11,7 @@ tosqlite:
 	$(CC) $(CFLAGS) tosqlite.c tools.c blockchain.c -o $@ $(LIBS) -lsqlite3
 
 clean:
-	rm -fv nyanblock nyanblock.dSYM tosqlite tosqlite.dSYM
+	rm -Rfv nyanblock nyanblock.dSYM tosqlite tosqlite.dSYM
 
 all: nyanblock tosqlite
 
