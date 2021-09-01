@@ -130,6 +130,7 @@ int main(int argc, char** argv) {
         }
         char buf[4096] = {0};
         fread(buf, 4095, 1, sql);
+        fclose(sql);
         ok = sqlite3_exec(db, buf, NULL, NULL, &sqlerr); SQLITE_CHECK_FATAL(ok);
         if(ok != SQLITE_OK) exit(1);
     }
