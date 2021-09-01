@@ -245,30 +245,14 @@ int main(int argc, char** argv) {
             size_t txbytes = parse_transaction(&tx, pos);
             pos += txbytes;
 
-            /*printf(
-                "\t\tVersion: %d\n"
-                "\t\tNumInputs: %lu\n"
-            ,tx->version, tx->num_inputs);*/
 
             for(uint64_t ii = 0; ii < tx->num_inputs; ++ii) {
                 const input_t *input = tx->inputs[ii];
                 char txhash[65];
-                snprint_sha256sum(txhash, input->txid);
-               /* printf(
-                    "\t\tInput #%lu ->\n"
-                    "\t\t\tTxID: %s\n"
-                    "\t\t\tTxOut: %d\n"
-                    "\t\t\tScriptLen: %lu\n",
-                    ii, txhash, input->txout, input->scriptlen
-                );*/
+                memcpy(temp, input->txid, 32);
+                byte_swap(temp, 32);
+                snprint_sha256sum(txhash, temp);
 
-                /*printf("\t\t\tScript: " ANSI_COLOR_BLUE);
-                for(uint64_t si = 0; si < input->scriptlen; ++si) {
-                    printf(ANSI_COLOR_BLUE "%c", input->script[si] > 31 && input->script[si] < 127 ? input->script[si] : '?');
-                }
-                printf(ANSI_COLOR_RESET "\n");
-
-                printf("\t\t\tSequence: %d\n\t\t\t---\n", input->sequence);*/
 
                 ok = sqlite3_bind_int64(inputs_insert_stmt, 1, transaction_id); SQLITE_CHECK_FATAL(ok);
                 ok = sqlite3_bind_text(inputs_insert_stmt, 2, txhash, 64, SQLITE_STATIC); SQLITE_CHECK_FATAL(ok);
@@ -282,19 +266,6 @@ int main(int argc, char** argv) {
 
             for(uint64_t ii = 0; ii < tx->num_outputs; ++ii) {
                 const output_t *output = tx->outputs[ii];
-
-                /*printf(
-                    "\t\tOutput #%lu ->\n"
-                    "\t\t\tValue: %lu\n"
-                    "\t\t\tPubKeyLen: %lu\n"
-                    "\t\t\tPubKey: ",
-                    ii, output->value, output->pubkeylen
-                );*/
-
-                /*for(uint64_t ci = 0; ci < output->pubkeylen; ++ci) {
-                    printf("%.2x", output->pubkey[ci]);
-                }
-                printf("\n");*/
 
                 ok = sqlite3_bind_int64(outputs_insert_stmt, 1, transaction_id); SQLITE_CHECK_FATAL(ok);
                 ok = sqlite3_bind_int64(outputs_insert_stmt, 2, (uint64_t)output->value); SQLITE_CHECK_FATAL(ok);
@@ -312,6 +283,9 @@ int main(int argc, char** argv) {
     ok = sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
 
     ok = sqlite3_finalize(block_insert_stmt); SQLITE_CHECK_FATAL(ok);
+    ok = sqlite3_finalize(transaction_insert_stmt); SQLITE_CHECK_FATAL(ok);
+    ok = sqlite3_finalize(inputs_insert_stmt); SQLITE_CHECK_FATAL(ok);
+    ok = sqlite3_finalize(outputs_insert_stmt); SQLITE_CHECK_FATAL(ok);
     ok = sqlite3_close(db); SQLITE_CHECK_FATAL(ok);
     munmap(mappedFile, fileLen);
     fclose(f);
