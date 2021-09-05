@@ -15,54 +15,12 @@
 
 static unsigned char NyanCoinMagic[4] = { 0xfc, 0xd9, 0xb7, 0xdd };
 
-
-void print_block_dataheader(const t_BlockDataHeader* h) {
-    printf("\tMagic: 0x");
-    for(int i = 0; i < 4; ++i) {
-        printf("%.2x", h->magic[i]);
-    }
-
-    if(array_compare_u8((const char*)h->magic, (const char*)NyanCoinMagic, 4) == 0) {
-        printf(" - (nyancoin)");
-    } else {
-        printf(" - (no match?!)\n");
-        return;
-    }
-    printf("\n");
-
-    printf("\tSize: (0x%.8x) %u bytes\n", h->size, h->size);
-}
-
-void print_hash256(const uint8_t *buf) {
-    for(int i = 0; i < 32; ++i) {
-        printf("%.2x", buf[i]);
-    }
-}
-
-static char timebuf[128];
-
-void print_block_header(const t_BlockHeader* h) {
-    printf("\tVersion: %d\n", h->version);
-    printf("\tPrevBlock: "); print_hash256(h->prev_block); printf("\n");
-    printf("\tMerkleRoot: "); print_hash256(h->merkle_root); printf("\n");
-    
-    timeago(timebuf, 127, h->timestamp);
-    timebuf[127] = '\0';
-    
-    printf("\tTimeStamp: %d (%s)\n", h->timestamp, timebuf);
-
-    double diff = GetDifficulty(h->bits);
-    printf("\tBits: 0x%.8x (diff: %.8f)\n", h->bits, diff);
-    printf("\tNonce: %u\n", h->nonce);
-}
-
 static volatile int keepgoing = 1;
 
 void sigint_handler(int sig) {
     keepgoing = 0;
     fprintf(stderr, "SIGINT captured!\n");
 }
-
 
 char *sqlerr;
 int ok = 666;
