@@ -2,10 +2,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/types.h>
 #include <sys/mman.h>
 #include <wordexp.h>
 #include <signal.h>
 #include <unistd.h> // for isatty
+#include <errno.h>
 
 #include <sqlite3.h>
 
@@ -55,14 +57,14 @@ int main(int argc, char** argv) {
         f = fopen(exp_result.we_wordv[0], "rb");
         wordfree(&exp_result);
         if(!f) {
-            printf("Cannot open ./blk0001.dat or ~/.nyancoin/blk0001.dat!\n");
+            fprintf(stderr, ANSI_COLOR_RED "Cannot open ./blk0001.dat or ~/.nyancoin/blk0001.dat!\n" ANSI_COLOR_RESET);
             exit(1);
         }
     }
 
     fseek(f, 0L, SEEK_END);
     size_t fileLen = ftell(f);
-    printf("File is %lu bytes long.\n", fileLen);
+    fprintf(stderr, "File is %lu bytes long.\n", fileLen);
     rewind(f);
 
     signal(SIGINT, sigint_handler);
@@ -72,8 +74,12 @@ int main(int argc, char** argv) {
 
     void* mappedFile = mmap(NULL, fileLen, PROT_READ, MAP_PRIVATE, fileno(f), 0);
     if(mappedFile == MAP_FAILED) {
-        fprintf(stderr, ANSI_COLOR_RED "\nFailed to mmap!\n" ANSI_COLOR_RESET);
+        fprintf(stderr, ANSI_COLOR_RED "\nFailed to mmap: errno: %d\n" ANSI_COLOR_RESET, errno);
         exit(1);
+    }
+
+    if ( posix_madvise(mappedFile, fileLen, POSIX_MADV_SEQUENTIAL|POSIX_MADV_WILLNEED) != 0 ) {
+        fprintf(stderr, ANSI_COLOR_YELLOW "Not critical: Failed to madvise memory region" ANSI_COLOR_RESET "\n");
     }
 
     ok = sqlite3_open_v2("nyanblock.db", &db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL);
@@ -83,7 +89,7 @@ int main(int argc, char** argv) {
     {
         FILE *sql = fopen("nyanblock.sql", "r");
         if (sql == NULL) {
-            printf("unable to open nyanblock.sql\n");
+            fprintf(stderr, ANSI_COLOR_RED "unable to open nyanblock.sql\n" ANSI_COLOR_RESET);
             exit(1);
         }
         char buf[4096] = {0};

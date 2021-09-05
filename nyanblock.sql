@@ -53,4 +53,11 @@ CREATE INDEX IF NOT EXISTS "idx_txid_outputs" ON "outputs" ("transaction_id");
 CREATE INDEX IF NOT EXISTS "idx_value_outputs" ON "outputs" ("value");
 
 
+CREATE VIEW IF NOT EXISTS "blockchain" AS
+	SELECT * FROM `blocks`
+	INNER JOIN `transactions` ON transactions.block = blocks.id
+	INNER JOIN `inputs` ON inputs.transaction_id = transactions.id
+	INNER JOIN `outputs` ON outputs.transaction_id = transactions.id
+;
+
 COMMIT;
