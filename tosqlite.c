@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    if ( posix_madvise(mappedFile, fileLen, POSIX_MADV_SEQUENTIAL|POSIX_MADV_WILLNEED) != 0 ) {
+    if ( madvise(mappedFile, fileLen, MADV_SEQUENTIAL|MADV_WILLNEED) != 0 ) {
         fprintf(stderr, ANSI_COLOR_YELLOW "Not critical: Failed to madvise memory region" ANSI_COLOR_RESET "\n");
     }
 
@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
         ++bid;
 
         if(bid % 10000 == 0) {
-            printf("Block #%llu, %llu blocks skipped\n", bid, blocksSkipped);
+            printf("Block #%lu, %lu blocks skipped\n", bid, blocksSkipped);
             blocksSkipped = 0;
             ok = sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
             ok = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
