@@ -90,7 +90,7 @@ void sqlite_errcheck(int result, int fatal, const char *file, const int line) {
     sqlite_errcheck(r, 1, __FILE__, __LINE__);
 
 int main(int argc, char** argv) {
-    FILE *f = fopen("blk0001.dat", "rb");
+    FILE *f = fopen("blk0002.dat", "rb");
     if(!f) {
         wordexp_t exp_result;
         wordexp("~/.nyancoin/blk0001.dat", &exp_result, 0);
@@ -165,6 +165,12 @@ int main(int argc, char** argv) {
                          "VALUES (?, ?, ?)",
                          -1, &outputs_insert_stmt, NULL);
     SQLITE_CHECK_FATAL(ok);
+
+    sqlite3_stmt *block_exists_stmt;
+    ok = sqlite3_prepare(db,
+                         "SELECT id FROM blocks WHERE block_hash = ?",
+                         -1, &block_exists_stmt, NULL);
+    SQLITE_CHECK_FATAL(ok);
     
 
     t_BlockDataHeader *h = (t_BlockDataHeader*)mappedFile;
@@ -174,6 +180,7 @@ int main(int argc, char** argv) {
     // Scan blockchain
     uint64_t bid = -1;
     uint64_t offset = 0;
+    uint64_t blocksSkipped = 0;
     unsigned char blockHash[SHA256_DIGEST_LENGTH];
     char blockHashStr[65], parentHashStr[65], merkleHashStr[65];
     blockHashStr[64] = '\0'; parentHashStr[64] = '\0'; merkleHashStr[64] = '\0'; 
@@ -188,7 +195,7 @@ int main(int argc, char** argv) {
         ++bid;
 
         if(bid % 10000 == 0) {
-            printf("Block #%llu\n", bid);
+            printf("Block #%llu, %llu existing blocks skipped\n", bid, blocksSkipped);
             ok = sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
             ok = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
         }
@@ -203,6 +210,19 @@ int main(int argc, char** argv) {
         memcpy(temp, blockHash, 32);
         byte_swap(temp, 32);
         snprint_sha256sum(blockHashStr, temp);
+
+        {
+            ok = sqlite3_bind_text(block_exists_stmt, 1, blockHashStr, -1, NULL); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_step(block_exists_stmt); SQLITE_CHECK_FATAL(ok);
+            if (ok == SQLITE_ROW) {
+                // something exists, just continue
+                //fprintf(stderr, "%sSkipping block ...%s\n", ANSI_COLOR_MAGENTA, ANSI_COLOR_RESET);
+                blocksSkipped++;
+                sqlite3_reset(block_exists_stmt);
+                continue;
+            }
+            sqlite3_reset(block_exists_stmt);
+        }
         
         memcpy(temp, bh->prev_block, 32);
         byte_swap(temp, 32);
@@ -287,6 +307,7 @@ int main(int argc, char** argv) {
     ok = sqlite3_finalize(transaction_insert_stmt); SQLITE_CHECK_FATAL(ok);
     ok = sqlite3_finalize(inputs_insert_stmt); SQLITE_CHECK_FATAL(ok);
     ok = sqlite3_finalize(outputs_insert_stmt); SQLITE_CHECK_FATAL(ok);
+    ok = sqlite3_finalize(block_exists_stmt); SQLITE_CHECK_FATAL(ok);
     ok = sqlite3_close(db); SQLITE_CHECK_FATAL(ok);
     munmap(mappedFile, fileLen);
     fclose(f);

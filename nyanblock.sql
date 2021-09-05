@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS "blocks" (
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 
+CREATE INDEX IF NOT EXISTS "idx_block_hash" ON "blocks" ("block_hash");
+CREATE INDEX IF NOT EXISTS "idx_parent_hash" ON "blocks" ("parent_hash");
+
 CREATE TABLE IF NOT EXISTS "transactions" (
 	"id" INTEGER,
 	"block" INTEGER NOT NULL,
@@ -20,6 +23,8 @@ CREATE TABLE IF NOT EXISTS "transactions" (
 	PRIMARY KEY("id" AUTOINCREMENT),
 	FOREIGN KEY (block) REFERENCES blocks(id)
 );
+
+CREATE INDEX IF NOT EXISTS "idx_tx_block" ON "transactions" ("block");
 
 CREATE TABLE IF NOT EXISTS "inputs" (
 	"id" INTEGER,
@@ -32,6 +37,9 @@ CREATE TABLE IF NOT EXISTS "inputs" (
 	FOREIGN KEY (transaction_id) REFERENCES transactions(id)
 );
 
+CREATE INDEX IF NOT EXISTS "idx_txhash_inputs" ON "inputs" ("txhash");
+CREATE INDEX IF NOT EXISTS "idx_txid_inputs" ON "inputs" ("transaction_id");
+
 CREATE TABLE IF NOT EXISTS "outputs" (
 	"id" INTEGER NOT NULL,
 	"transaction_id" INTEGER NOT NULL,
@@ -41,7 +49,8 @@ CREATE TABLE IF NOT EXISTS "outputs" (
 	FOREIGN KEY (transaction_id) REFERENCES transactions(id)
 );
 
-CREATE INDEX IF NOT EXISTS "idx_block_hash" ON "blocks" ("block_hash");
-CREATE INDEX IF NOT EXISTS "idx_parent_hash" ON "blocks" ("parent_hash");
+CREATE INDEX IF NOT EXISTS "idx_txid_outputs" ON "outputs" ("transaction_id");
+CREATE INDEX IF NOT EXISTS "idx_value_outputs" ON "outputs" ("value");
+
 
 COMMIT;
