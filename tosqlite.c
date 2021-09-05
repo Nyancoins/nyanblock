@@ -50,7 +50,7 @@ void sqlite_errcheck(int result, int fatal, const char *file, const int line) {
     sqlite_errcheck(r, 1, __FILE__, __LINE__);
 
 int main(int argc, char** argv) {
-    FILE *f = fopen("blk0002.dat", "rb");
+    FILE *f = fopen("blk0001.dat", "rb");
     if(!f) {
         wordexp_t exp_result;
         wordexp("~/.nyancoin/blk0001.dat", &exp_result, 0);
