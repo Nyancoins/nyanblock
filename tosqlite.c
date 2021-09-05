@@ -195,7 +195,8 @@ int main(int argc, char** argv) {
         ++bid;
 
         if(bid % 10000 == 0) {
-            printf("Block #%llu, %llu existing blocks skipped\n", bid, blocksSkipped);
+            printf("Block #%llu, %llu blocks skipped\n", bid, blocksSkipped);
+            blocksSkipped = 0;
             ok = sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
             ok = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
         }
@@ -212,14 +213,16 @@ int main(int argc, char** argv) {
         snprint_sha256sum(blockHashStr, temp);
 
         {
-            ok = sqlite3_bind_text(block_exists_stmt, 1, blockHashStr, -1, NULL); SQLITE_CHECK_FATAL(ok);
+            // check for existing blocks in database
+            ok = sqlite3_bind_text(block_exists_stmt, 1, blockHashStr, 64, NULL); SQLITE_CHECK_FATAL(ok);
             ok = sqlite3_step(block_exists_stmt); SQLITE_CHECK_FATAL(ok);
+            //fprintf(stderr, "%s  Block check %s ok: %d%s\n", ANSI_COLOR_RED, blockHashStr, ok, ANSI_COLOR_RESET);
             if (ok == SQLITE_ROW) {
                 // something exists, just continue
                 //fprintf(stderr, "%sSkipping block ...%s\n", ANSI_COLOR_MAGENTA, ANSI_COLOR_RESET);
                 blocksSkipped++;
                 sqlite3_reset(block_exists_stmt);
-                continue;
+                goto nextblock;
             }
             sqlite3_reset(block_exists_stmt);
         }
@@ -234,9 +237,9 @@ int main(int argc, char** argv) {
 
         ok = sqlite3_bind_int(block_insert_stmt, 1, bid); SQLITE_CHECK_FATAL(ok);
         ok = sqlite3_bind_int(block_insert_stmt, 2, bh->version); SQLITE_CHECK_FATAL(ok);
-        ok = sqlite3_bind_text(block_insert_stmt, 3, blockHashStr, -1, NULL); SQLITE_CHECK_FATAL(ok);
-        ok = sqlite3_bind_text(block_insert_stmt, 4, parentHashStr, -1, NULL); SQLITE_CHECK_FATAL(ok);
-        ok = sqlite3_bind_text(block_insert_stmt, 5, merkleHashStr, -1, NULL); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_text(block_insert_stmt, 3, blockHashStr, 64, NULL); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_text(block_insert_stmt, 4, parentHashStr, 64, NULL); SQLITE_CHECK_FATAL(ok);
+        ok = sqlite3_bind_text(block_insert_stmt, 5, merkleHashStr, 64, NULL); SQLITE_CHECK_FATAL(ok);
         ok = sqlite3_bind_int64(block_insert_stmt, 6, bh->timestamp); SQLITE_CHECK_FATAL(ok);
         ok = sqlite3_bind_int64(block_insert_stmt, 7, bh->bits); SQLITE_CHECK_FATAL(ok);
         ok = sqlite3_bind_int64(block_insert_stmt, 8, bh->nonce); SQLITE_CHECK_FATAL(ok);
@@ -299,6 +302,7 @@ int main(int argc, char** argv) {
         }
 
         // end of loop
+        nextblock:
         offset += h->size + 8;
     }
     ok = sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
