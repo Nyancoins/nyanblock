@@ -1,6 +1,6 @@
 CC:=clang
-CFLAGS:=-Wall -pipe -O3 -march=native -ggdb3 -std=c11 -D_POSIX_C_SOURCE -I/usr/local/opt/openssl@1.1/include
-LIBS:=-L/usr/local/opt/openssl@1.1/lib -lssl -lcrypto
+CFLAGS:=-Wall -pipe -O3 -ggdb3 -std=c11 -D_POSIX_C_SOURCE -I/usr/local/opt/openssl@1.1/include -I/opt/homebrew/opt/openssl@1.1/include
+LIBS:=-L/usr/local/opt/openssl@1.1/lib -L/opt/homebrew/opt/openssl@1.1/lib -lssl -lcrypto
 
 SOURCES:= main.c tools.c blockchain.c
 
