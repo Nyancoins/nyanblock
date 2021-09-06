@@ -93,8 +93,8 @@ int main(int argc, char** argv) {
 
     sqlite3_stmt *block_insert_stmt;
     ok = sqlite3_prepare(db,
-        "INSERT INTO blocks (id, version, block_hash, parent_hash, merkle_hash, timestamp, bits, nonce, size) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO blocks (version, block_hash, parent_hash, merkle_hash, timestamp, bits, nonce, size) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     -1, &block_insert_stmt, NULL);
     SQLITE_CHECK_FATAL(ok);
 
@@ -126,6 +126,7 @@ int main(int argc, char** argv) {
                          -1, &block_exists_stmt, NULL);
     SQLITE_CHECK_FATAL(ok);
     
+    uint64_t bid = -1;
     for (uint64_t n = 0; n < numBlkFiles; ++n) {
         FILE *f = fopen(globr.gl_pathv[n], "rb");
         if(!f) {
@@ -149,18 +150,16 @@ int main(int argc, char** argv) {
             fprintf(stderr, ANSI_COLOR_YELLOW "Not critical: Failed to madvise memory region" ANSI_COLOR_RESET "\n");
         }
 
-        t_BlockDataHeader *h = (t_BlockDataHeader*)mappedFile;
-        t_BlockHeader* bh = (void*)h + 8;
+        const t_BlockDataHeader *h = (t_BlockDataHeader*)mappedFile;
+        const t_BlockHeader* bh = (void*)h + 8;
 
 
         // Scan blockchain
-        uint64_t bid = -1;
         uint64_t offset = 0;
         uint64_t blocksSkipped = 0;
         unsigned char blockHash[SHA256_DIGEST_LENGTH];
-        char blockHashStr[65], parentHashStr[65], merkleHashStr[65];
-        blockHashStr[64] = '\0'; parentHashStr[64] = '\0'; merkleHashStr[64] = '\0'; 
-        unsigned char temp[64];
+        char blockHashStr[65] = {0}, parentHashStr[65] = {0}, merkleHashStr[65] = {0};
+        unsigned char temp[64] = {0};
         memset(blockHash, 0, SHA256_DIGEST_LENGTH);
 
         ok = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL); SQLITE_CHECK_FATAL(ok);
@@ -211,18 +210,18 @@ int main(int argc, char** argv) {
             byte_swap(temp, 32);
             snprint_sha256sum(merkleHashStr, temp);
 
-            ok = sqlite3_bind_int(block_insert_stmt, 1, bid); SQLITE_CHECK_FATAL(ok);
-            ok = sqlite3_bind_int(block_insert_stmt, 2, bh->version); SQLITE_CHECK_FATAL(ok);
-            ok = sqlite3_bind_text(block_insert_stmt, 3, blockHashStr, 64, NULL); SQLITE_CHECK_FATAL(ok);
-            ok = sqlite3_bind_text(block_insert_stmt, 4, parentHashStr, 64, NULL); SQLITE_CHECK_FATAL(ok);
-            ok = sqlite3_bind_text(block_insert_stmt, 5, merkleHashStr, 64, NULL); SQLITE_CHECK_FATAL(ok);
-            ok = sqlite3_bind_int64(block_insert_stmt, 6, bh->timestamp); SQLITE_CHECK_FATAL(ok);
-            ok = sqlite3_bind_int64(block_insert_stmt, 7, bh->bits); SQLITE_CHECK_FATAL(ok);
-            ok = sqlite3_bind_int64(block_insert_stmt, 8, bh->nonce); SQLITE_CHECK_FATAL(ok);
-            ok = sqlite3_bind_int64(block_insert_stmt, 9, h->size); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_bind_int(block_insert_stmt, 1, bh->version); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_bind_text(block_insert_stmt, 2, blockHashStr, 64, NULL); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_bind_text(block_insert_stmt, 3, parentHashStr, 64, NULL); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_bind_text(block_insert_stmt, 4, merkleHashStr, 64, NULL); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_bind_int64(block_insert_stmt, 5, bh->timestamp); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_bind_int64(block_insert_stmt, 6, bh->bits); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_bind_int64(block_insert_stmt, 7, bh->nonce); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_bind_int64(block_insert_stmt, 8, h->size); SQLITE_CHECK_FATAL(ok);
 
             ok = sqlite3_step(block_insert_stmt); SQLITE_CHECK_FATAL(ok);
             ok = sqlite3_reset(block_insert_stmt); SQLITE_CHECK_FATAL(ok);
+            uint64_t lastblock_id = sqlite3_last_insert_rowid(db);
 
             // varint + tx
             const uint8_t* varint_base = (uint8_t*) bh + sizeof(t_BlockHeader);
@@ -232,7 +231,7 @@ int main(int argc, char** argv) {
             pos += varint_len;
             //printf("\t---\n\tVarInt: %lu transaction%s\n", numTx, numTx > 1 ? "s" : "");
 
-            ok = sqlite3_bind_int64(transaction_insert_stmt, 1, bid); SQLITE_CHECK_FATAL(ok);
+            ok = sqlite3_bind_int64(transaction_insert_stmt, 1, lastblock_id); SQLITE_CHECK_FATAL(ok);
             ok = sqlite3_bind_int64(transaction_insert_stmt, 2, numTx); SQLITE_CHECK_FATAL(ok);
             ok = sqlite3_step(transaction_insert_stmt); SQLITE_CHECK_FATAL(ok);
             ok = sqlite3_reset(transaction_insert_stmt); SQLITE_CHECK_FATAL(ok);
